@@ -42,15 +42,41 @@ class PiezoJena():
                                     rtscts = comparams.rtscts, dsrdtr = comparams.dsrdtr)
         self.__mutex = Lock()
         self.__cmds = params.cmds
-        self._send_cmd = self.__safe_send_cmd if threadsafe else self.__unsafe_send_cmd
-        self._read_cmd = self.__safe_read_cmd if threadsafe else self.__unsafe_read_cmd
+        self.__send_cmd = self.__safe_send_cmd if threadsafe else self.__unsafe_send_cmd
+        self.__read_cmd = self.__safe_read_cmd if threadsafe else self.__unsafe_read_cmd
         self.__send_term, self.__rcv_term = params.term_in, params.term_out
 
-    def move_um(self, um):
+        self._piezo.write("\r".encode())
+        #print(self._piezo.readline().decode())#.removesuffix(self.__rcv_term))
+
+    def set_pos_um(self, um):
         """
         move piezo to psosition in um
         """
-        self.__send_cmd(self.cmds.move(um))
+        self.__send_cmd(self.__cmds.move(um))
+
+    def get_pos_um(self):
+        """
+        inquire piezo psosition in um
+        """
+        return self.__read_cmd(self.__cmds.pos)
+
+    def set_pos_V(self, V):
+        """
+        set piezo voltage to value
+        """
+        self.__send_cmd(self.__cmds.setmode_V)
+        self.__send_cmd(self.__cmds.move(V))
+        self.__send_cmd(self.__cmds.setmode_um)
+
+    def get_pos_V(self):
+        """
+        inquire piezo voltage value
+        """
+        self.__send_cmd(self.__cmds.setmode_V)
+        ret = self.__read_cmd(self.__cmds.pos)
+        self.__send_cmd(self.__cmds.setmode_um)
+        return ret
 
     def __safe_send_cmd(self, cmd):
         with self.__mutex:
