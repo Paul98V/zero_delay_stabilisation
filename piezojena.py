@@ -45,9 +45,20 @@ class PiezoJena():
         self.__send_cmd = self.__safe_send_cmd if threadsafe else self.__unsafe_send_cmd
         self.__read_cmd = self.__safe_read_cmd if threadsafe else self.__unsafe_read_cmd
         self.__send_term, self.__rcv_term = params.term_in, params.term_out
+        self.__message = message
 
-        self._piezo.write("\r".encode())
-        #print(self._piezo.readline().decode())#.removesuffix(self.__rcv_term))
+        for hcmd in params.handshake:
+            if hcmd.rsp is None:
+                self.__send_cmd(hcmd.cmd)
+            else:
+                rsp = self.__read_cmd(hcmd.cmd)
+                if rsp != hcmd.rsp:
+                    self.__send_message(
+                            f'Handshake has failed, CMD: "{hcmd.cmd}", rsp: "{rsp}", expected: "{hcmd.rsp}"!')
+                    return
+
+        # program assumes were always in voltage mode unless specified otherwise
+        self.__send_cmd(self.__cmds.setmode_um)
 
     def set_pos_um(self, um):
         """
@@ -61,14 +72,6 @@ class PiezoJena():
         """
         return self.__read_cmd(self.__cmds.pos)
 
-    def set_pos_V(self, V):
-        """
-        set piezo voltage to value
-        """
-        self.__send_cmd(self.__cmds.setmode_V)
-        self.__send_cmd(self.__cmds.move(V))
-        self.__send_cmd(self.__cmds.setmode_um)
-
     def get_pos_V(self):
         """
         inquire piezo voltage value
@@ -77,6 +80,12 @@ class PiezoJena():
         ret = self.__read_cmd(self.__cmds.pos)
         self.__send_cmd(self.__cmds.setmode_um)
         return ret
+
+    def __send_message(self, mssg):
+        if self.__message is None:
+            print(mssg)
+        else:
+            self.__message(mssg)
 
     def __safe_send_cmd(self, cmd):
         with self.__mutex:
@@ -96,5 +105,5 @@ class PiezoJena():
 
 
 if __name__ == "__main__":
-    from piezo_jena_controllers import NV200_DNET
+    from piezo_jena_controllers import NV200_DNET, NV40_1CLE
     test = PiezoJena(6, NV200_DNET)

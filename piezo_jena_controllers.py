@@ -1,5 +1,5 @@
 import serial
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable
 
 type ByeteSize = serial.FIVEBITS | serial.SIXBITS | serial.SEVENBITS | serial.EIGHTBITS  
@@ -25,11 +25,19 @@ class CMDS:
     setmode_V : str
 
 @dataclass
+class HandshakeCommand:
+    cmd : str
+    rsp : str | None = None
+
+type Handshake = list[HandshakeCommand]
+
+@dataclass
 class ControlerParams:
     COMparams : COMParams
     cmds : CMDS
     term_in : str = "\r"
     term_out : str = "\r\n"
+    handshake : Handshake = field(default_factory = lambda: [])
 
 #######################################################################################
 ###
@@ -41,7 +49,11 @@ class ControlerParams:
 class NV200_DNET:
     pass
 
-type ControlerName = NV200D_NET
+@dataclass
+class NV40_1CLE:
+    pass
+
+type ControlerName = NV200D_NET | NV40_1CLE
 
 #######################################################################################
 ###
@@ -50,6 +62,7 @@ type ControlerName = NV200D_NET
 #######################################################################################
 
 PiezoJenaControllers : dict[ControlerName, ControlerParams] = {
+
         NV200_DNET : ControlerParams(
             COMParams(baudrate = 115200,
                       bytesize = serial.EIGHTBITS,
@@ -60,5 +73,18 @@ PiezoJenaControllers : dict[ControlerName, ControlerParams] = {
                  pos = "meas",
                  setmode_um = "cl,1",
                  setmode_V = "cl,0"),
+            handshake = [HandshakeCommand("", "NV200/D_NET>"),
+                         #HandshakeCommand("modsrc,0"),
+                         ],
+            ),
+
+        NV40_1CLE : ControlerParams(
+            COMParams(baudrate = 9600,
+                      stopbits = serial.STOPBITS_ONE,
+                      parity = serial.PARITY_NONE),
+            CMDS(move = lambda x: f"wr,{x}",
+                 pos = "Rd",
+                 setmode_um = "cl",
+                 setmode_V = "ol"),
             ),
         }
