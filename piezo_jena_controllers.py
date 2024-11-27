@@ -2,7 +2,6 @@ import serial
 from dataclasses import dataclass, field
 from typing import Callable
 
-
 type ByeteSize = serial.FIVEBITS | serial.SIXBITS | serial.SEVENBITS | serial.EIGHTBITS  
 type Parity = serial.PARITY_NONE | serial.PARITY_EVEN | serial.PARITY_ODD | \
               serial.PARITY_MARK | serial.PARITY_SPACE
