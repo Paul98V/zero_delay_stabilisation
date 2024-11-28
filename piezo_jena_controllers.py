@@ -38,6 +38,7 @@ class ControlerParams:
     term_in : str = "\r"
     term_out : str = "\r\n"
     handshake : Handshake = field(default_factory = lambda: [])
+    cleanup : Handshake = field(default_factory = lambda: [])
 
 #######################################################################################
 ###
@@ -83,8 +84,13 @@ PiezoJenaControllers : dict[ControlerName, ControlerParams] = {
                       stopbits = serial.STOPBITS_ONE,
                       parity = serial.PARITY_NONE),
             CMDS(move = lambda x: f"wr,{x}",
-                 pos = "Rd",
+                 pos = "rd", # Note capitalisation typo in manual
                  setmode_um = "cl",
                  setmode_V = "ol"),
+            handshake = [HandshakeCommand("", "NV1CL V1.251>"),
+                         HandshakeCommand("i1"),
+                         ],
+            cleanup = [HandshakeCommand("i0"),
+                       ],
             ),
         }

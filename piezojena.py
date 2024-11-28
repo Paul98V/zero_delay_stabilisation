@@ -35,17 +35,20 @@ class PiezoJena():
         params = PiezoJenaControllers[controler]
         comparams = params.COMparams
 
+        self.__connection_established = False
         self._piezo = serial.Serial(COMport, timeout = timeout_s, write_timeout = write_timeout_s,
                                     inter_byte_timeout = inter_byte_timeout_s,
                                     baudrate = comparams.baudrate, parity = comparams.parity,
                                     stopbits = comparams.stopbits, xonxoff = comparams.xonxoff,
                                     rtscts = comparams.rtscts, dsrdtr = comparams.dsrdtr)
+        self.__connection_established = True
         self.__mutex = Lock()
         self.__cmds = params.cmds
         self.__send_cmd = self.__safe_send_cmd if threadsafe else self.__unsafe_send_cmd
         self.__read_cmd = self.__safe_read_cmd if threadsafe else self.__unsafe_read_cmd
         self.__send_term, self.__rcv_term = params.term_in, params.term_out
         self.__message = message
+        self.__cleanup = params.cleanup
 
         for hcmd in params.handshake:
             if hcmd.rsp is None:
@@ -60,19 +63,33 @@ class PiezoJena():
         # program assumes were always in voltage mode unless specified otherwise
         self.__send_cmd(self.__cmds.setmode_um)
 
-    def set_pos_um(self, um):
+    def __del__(self) -> None:
+        if self.__connection_established is False:
+            return
+        for hcmd in self.__cleanup:
+            if hcmd.rsp is None:
+                self.__send_cmd(hcmd.cmd)
+            else:
+                rsp = self.__read_cmd(hcmd.cmd)
+                if rsp != hcmd.rsp:
+                    self.__send_message(
+                            f'Clenup has failed, CMD: "{hcmd.cmd}", rsp: "{rsp}", expected: "{hcmd.rsp}"!')
+                    return
+        del self._piezo
+
+    def set_pos_um(self, um : float) -> None:
         """
         move piezo to psosition in um
         """
         self.__send_cmd(self.__cmds.move(um))
 
-    def get_pos_um(self):
+    def get_pos_um(self) -> str:
         """
         inquire piezo psosition in um
         """
         return self.__read_cmd(self.__cmds.pos)
 
-    def get_pos_V(self):
+    def get_pos_V(self) -> str:
         """
         inquire piezo voltage value
         """
